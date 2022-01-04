@@ -206,7 +206,8 @@ inline void app_main(
     long double avgP = 0, m2P = 0; size_t nP = 0;
     sim.sim.sgs = "RLSM";
 
-    cubismup3d::SGS_RL updateLES(sim.sim, comm, nAgentPerBlock);
+    const auto kernel = parser("-RL_policyKernel").asInt(0);
+    cubismup3d::SGS_RL updateLES(sim.sim, comm, nAgentPerBlock, cubismup3d::SGS_RL::Kernel(kernel));
 
     while (true) //simulation loop
     {

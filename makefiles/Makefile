@@ -217,9 +217,15 @@ lib: $(LIBOBJ) $(NVOBJECTS)
 rlHIT: $(OBJECTS) $(NVOBJECTS)
 	$(CXX) $(CPPFLAGS) -fno-fast-math -I${SMARTIES_ROOT}/include -c ../source/main_RL_HIT.cpp -o main_RL_HIT.o
 	$(CXX) $(CPPFLAGS) -I${SMARTIES_ROOT}/include -c ../source/operators/SGS_RL.cpp -o SGS_RL.o
-	$(LD) -o $@ $^ main_RL_HIT.o SGS_RL.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties
+	$(LD) -o $@ $^ main_RL_HIT.o SGS_RL.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties -lmpi
 
 -include $(DEPS)
+
+SimulationData.o: ../source/SimulationData.cpp ../source/SimulationData.h
+	$(CXX) $(CPPFLAGS) -MMD -MF $(patsubst %.o,%.d,$@) -c $< -o $@
+
+Simulation.o: ../source/Simulation.cpp ../source/Simulation.h
+	$(CXX) $(CPPFLAGS) -MMD -MF $(patsubst %.o,%.d,$@) -c $< -o $@
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) -MMD -MF $(patsubst %.o,%.d,$@) -c $< -o $@

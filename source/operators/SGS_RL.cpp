@@ -436,8 +436,8 @@ struct KernelGermanoError
 };
 
 SGS_RL::SGS_RL(SimulationData&s, smarties::Communicator*_comm,
-               const int nAgentsPB) : Operator(s), commPtr(_comm),
-               nAgentsPerBlock(nAgentsPB)
+               const int nAgentsPB, Kernel k) : Operator(s), commPtr(_comm),
+               nAgentsPerBlock(nAgentsPB), mKernel(k)
 {
   // TODO relying on chi field does not work is obstacles are present
   // TODO : make sure there are no agents on the same grid point if nAgentsPB>1
@@ -573,28 +573,35 @@ void SGS_RL::run(const double dt, const bool RLinit, const bool RLover,
   };
   const rlApi_t sendState = RLinit ? Finit : ( RLover ? Flast : Fcont );
 
-  KernelSGS_RL K_SGS_RL(sendState, actInterp, stats, scaleVel, scaleGrad, scaleLap);
+  switch (mKernel) {
+    case SGS: {
+      KernelSGS_RL K_SGS_RL(sendState, actInterp, stats, scaleVel, scaleGrad, scaleLap);
+      if (bGridAgents) {
+        compute<KernelSGS_RL>(K_SGS_RL);
+      } else {
+// new setup : (first get actions for block centers, then interpolate)
+#pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < vInfo.size(); ++i)
+          K_SGS_RL.state_center(vInfo[i]);
 
-  if(bGridAgents) {
-    compute<KernelSGS_RL>(K_SGS_RL);
-  } else {
-    // new setup : (first get actions for block centers, then interpolate)
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < vInfo.size(); ++i) K_SGS_RL.state_center(vInfo[i]);
-
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < vInfo.size(); ++i) K_SGS_RL.apply_actions(vInfo[i]);
+#pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < vInfo.size(); ++i)
+          K_SGS_RL.apply_actions(vInfo[i]);
+      }
+      break;
+    }
+    case Germano: {
+      KernelGermanoError KlocR(stats, localRewards, scaleVel);
+      if (CUP_BLOCK_SIZE > 4) {
+#pragma omp parallel for schedule(static)
+        for (size_t i = 0; i < vInfo.size(); ++i)
+          KlocR.compute_locR(vInfo[i]);
+      } else {
+        compute<KernelGermanoError>(KlocR);
+      }
+      break;
+    }
   }
-
-  /*
-  KernelGermanoError KlocR(stats, localRewards, scaleVel);
-  if(CUP_BLOCK_SIZE > 4) {
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < vInfo.size(); ++i) KlocR.compute_locR(vInfo[i]);
-  } else {
-    compute<KernelGermanoError>(KlocR);
-  }
-  */
 
   sim.stopProfiler();
   check("SGS_RL");
@@ -606,3 +613,4 @@ int SGS_RL::nStateComponents()
 }
 
 CubismUP_3D_NAMESPACE_END
+

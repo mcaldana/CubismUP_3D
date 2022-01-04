@@ -28,15 +28,20 @@ struct HITtargetData;
 
 class SGS_RL : public Operator
 {
+public:
+  enum Kernel {SGS=0, Germano=1};
+
+private:
   smarties::Communicator * const commPtr;
   const int nAgentsPerBlock;
+  const Kernel mKernel;
   std::vector<int> agentsIDX;
   std::vector<int> agentsIDY;
   std::vector<int> agentsIDZ;
   std::vector<double> localRewards;
 
 public:
-  SGS_RL(SimulationData&s, smarties::Communicator*_comm, const int nAgentsPB);
+  SGS_RL(SimulationData&s, smarties::Communicator*_comm, const int nAgentsPB, Kernel k);
 
   void run(const double dt, const bool RLinit, const bool RLover,
            const HITstatistics& stats, const HITtargetData& target,
@@ -49,3 +54,4 @@ public:
 
 CubismUP_3D_NAMESPACE_END
 #endif
+
